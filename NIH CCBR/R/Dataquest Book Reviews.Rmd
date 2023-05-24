@@ -1,0 +1,93 @@
+---
+title: "Book Reviews"
+author: "Andrew Liu"
+date: "2023-05-24"
+output: html_document
+
+Introduction: What motivated our analysis? We are selling 5 different books on teaching R for interested people. We are curious as to which book sells best so that we may make better informed selling decisions in the future. We have the data of sales for 5 books in TX, NY, FL, and CA. This includes their ratings and prices.
+
+Findings: We did several things to "clean" the data. First, we eliminated rows with empty data in any column. Second, we standardized state names to abbreviations only. Third, we converted word ratings into numbers (ex: "Poor" -> 1, "Excellent" -> 5). By doing this, we were able to make several calculations with our data to find different interpretations, including best selling book by gross counts, by highest sell price, by high reviews (defined as a rating of 4/5+), by sales per state, and high reviews sorted by state.
+
+Conclusion: The best selling book according to the total number of high reviews and by high reviews per state was "Fundamentals of R for Beginners", which we conclude was the best-selling book. Possible limitations in our analysis were the unclear metrics of what defined a successful book and my own currently limited knowledge of R. The reader should review the analytical metrics (ex: best selling by state) and determine if any other metrics are needed. Otherwise, proceed with "Fundamentals of R for Beginners" as the best selling book.
+
+####
+    Introduction: What motivated our analysis? What kind of data do we have? What is the main question we're trying to answer?
+    Findings: What did we need to do to the data to do our analysis? What things are we calculating to answer our main question?
+    Conclusion: What is the answer to our main question? Was there anything that we feel limits our analysis? What should the reader do with our findings?
+####
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+books <- read_csv("book_reviews.csv")
+glimpse(books) #4 columns, 2000 rows; columns: book name, review (rating), state published, price
+#chr, chr, chr, dbl
+unique(books$price) #15.99 - 50.00
+unique(books$book) #5 books total
+unique(books$state) #4 states total; TX, NY, FL, Texas, California, Florida, CA, New York
+book_col <- colnames(books)
+for (x in colnames(books)) {
+  books <- books %>%
+    filter(!(is.na(books[x])))
+}
+```
+
+## R Markdown
+```{r}
+count = 0
+books <- books %>%
+  mutate(state = case_when(
+    state == "California" ~ "CA",
+    state == "New York" ~ "NY",
+    state == "Florida" ~ "FL",
+    state == "Texas" ~ "TX",
+    TRUE ~ state
+  )
+  )
+
+books <- books %>%
+  mutate(review_num = case_when(
+    review == "Poor" ~ 1,
+    review == "Fair" ~ 2,
+    review == "Good" ~ 3,
+    review == "Great" ~ 4,
+    review == "Excellent" ~ 5
+  ))
+
+books <- books %>%
+  mutate(is_high_review = case_when(
+    review_num >= 4 ~ TRUE,
+    TRUE ~ FALSE
+  ))
+```
+
+```{r}
+books_expensive <- books %>%
+  arrange(-price)
+most_expensive <- books_expensive[1, "book"]
+print(most_expensive)
+
+summary_table <- books %>%
+  count(book) %>%
+  arrange(-n)
+
+high_review <- books %>%
+  filter(is_high_review == TRUE) %>%
+  count(book) %>%
+  arrange (-n)
+
+by_state <- books %>%
+  filter(is_high_review == TRUE) %>%
+  count(state) %>%
+  arrange(-n)
+
+popular_by_state <- books %>%
+  filter(is_high_review == TRUE) %>%
+  group_by(state, book) %>%
+  summarize(sold = n()) %>%
+  ungroup()
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
