@@ -1,0 +1,109 @@
+---
+title: "Dataquest Booksales 2019"
+author: "Andrew Liu"
+date: "2023-05-25"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+install.packages(lubridate)
+library(lubridate)
+sales2019 <- read_csv("sales2019.csv")
+glimpse(sales2019) #5 col, 5000 rows: date(chr), user_submitted_review(chr), title(chr), total_purchased(dbl), customer_type(chr)
+#unique(sales2019$date) #various
+#unique(sales2019$user_submitted_review) #9 reviews + NA
+#unique(sales2019$title) #6 books
+#unique(sales2019$total_purchased) #14 quantities incl 0, NA
+#unique(sales2019$customer_type) #business or individual
+
+sales2019 <- sales2019 %>%
+  filter(!(is.na(sales2019$user_submitted_review))) #filtered out 885 rows
+
+avg_pur <- mean(sales2019$total_purchased, na.rm = TRUE)
+sales2019 <- sales2019 %>%
+  mutate(
+    total_purchased = if_else(is.na(total_purchased), avg_pur, total_purchased)
+  )
+```
+
+```{r}
+review_rating <- function(x) {
+    positive_rating <- case_when(
+      str_detect(x, "Awesome") ~ TRUE,
+      str_detect(x, "I learned a lot") ~ TRUE,
+      str_detect(x, "Never read a better book") ~ TRUE,
+      TRUE ~ FALSE
+    )
+}
+sales2019 <- sales2019 %>%
+  mutate(
+    positive_rating = unlist(map(user_submitted_review, review_rating))
+  )
+
+as.Date(18038)
+x<-as.Date(18038)
+class(x)
+```
+
+```{r}
+#convert_date <- function(x) {
+ # hopper <- mdy(x)
+  #return(as.Date(hopper))
+#}
+test_fxn <- function(x) {
+  hopper <- mdy(x)
+  return(as.Date(hopper))
+}
+test_fxn("5/22/19")
+
+sales2019 <- sales2019 %>%
+  mutate(
+    date1 = (map(date, test_fxn))
+  )
+
+#18078 represents July 1st, 2019
+
+####sales2019 <- sales2019 %>%
+  #mutate(
+   # date = unlist(map(date, ))
+  #)
+```
+
+```{r}
+summary_table1 <- sales2019 %>%
+  mutate(first_half = case_when(
+    date1 < 18078 ~ TRUE,
+    date1 >= 18078 ~ FALSE
+  )) %>%
+  group_by(first_half) %>%
+  summarise(num_sales = sum(total_purchased))
+#TRUE: before July 1st; FALSE: July 1st and after
+
+summary_table1.5 <- sales2019 %>%
+  mutate(first_half = case_when(
+    date1 < 18078 ~ TRUE,
+    date1 >= 18078 ~ FALSE
+  )) %>%
+  group_by(first_half, customer_type) %>%
+  summarise(num_sales = sum(total_purchased))
+
+summary_table <- sales2019 %>%
+  mutate(first_half = case_when(
+    date1 < 18078 ~ TRUE,
+    date1 >= 18078 ~ FALSE
+  )) %>%
+  group_by(first_half) %>%
+  summarise(positive_sales = sum(positive_rating == TRUE), negative_sales = sum(positive_rating == FALSE))
+#TRUE: before July 1st; FALSE: July 1st and after
+
+summary_table2<- sales2019 %>%
+  mutate(is_first_half_year = case_when(
+    date1< 18078 ~ TRUE,
+    date1 >= 18078 ~ FALSE
+  )) %>%
+  group_by(is_first_half_year, customer_type) %>%
+  summarise(positive_sales = sum(positive_rating == TRUE), negative_sales = sum(positive_rating == FALSE))
+```
